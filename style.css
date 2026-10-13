@@ -1,0 +1,61 @@
+/* Minimal portrait layout. The p5 canvas fills the screen; HTML sits on top. */
+html, body {
+  margin: 0;
+  height: 100%;
+  overflow: hidden;
+  background: #ffffff;
+  font-family: Georgia, "Times New Roman", serif;
+  color: #1a1a1a;
+  /* Stop the browser from scrolling/zooming while the phone is being tilted */
+  touch-action: manipulation;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+canvas { display: block; position: fixed; top: 0; left: 0; z-index: 0; }
+
+/* ---------- Buttons ---------- */
+.btn {
+  font: inherit;
+  font-size: 1.1rem;
+  padding: 0.9rem 1.4rem;
+  border: 2px solid #1a1a1a;
+  border-radius: 8px;
+  background: #1a1a1a;
+  color: #fff;
+  min-width: 9rem;
+  cursor: pointer;
+}
+.btn.secondary { background: #fff; color: #1a1a1a; }
+.btn:active { opacity: 0.7; }
+.btn:focus-visible { outline: 3px solid #2a5bd7; outline-offset: 2px; }
+
+/* ---------- Start screen ---------- */
+#start {
+  position: fixed; inset: 0; z-index: 10;
+  background: #fff;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  gap: 1rem; padding: 2rem; text-align: center;
+}
+#start h1 { margin: 0; font-weight: normal; font-size: 2rem; }
+#start p { margin: 0; max-width: 20rem; line-height: 1.4; }
+.msg { color: #a12626; }
+
+/* ---------- Main UI (bottom controls) ---------- */
+#ui {
+  position: fixed; left: 0; right: 0; bottom: 0; z-index: 5;
+  display: flex; flex-direction: column; align-items: center; gap: 0.8rem;
+  padding: 1rem 1rem calc(1.5rem + env(safe-area-inset-bottom, 0px));
+}
+#ui[hidden], #start[hidden], #banner[hidden], #manualNav[hidden] { display: none; }
+#manualNav { display: flex; gap: 0.8rem; }
+#actionBtn { width: min(80%, 22rem); }
+
+/* ---------- Error / status banner ---------- */
+#banner {
+  position: fixed; left: 0; right: 0; top: 0; z-index: 8;
+  padding: calc(0.6rem + env(safe-area-inset-top, 0px)) 1rem 0.6rem;
+  background: #fbeaea; color: #7a1c1c;
+  font-family: system-ui, sans-serif; font-size: 0.85rem; text-align: center;
+}
