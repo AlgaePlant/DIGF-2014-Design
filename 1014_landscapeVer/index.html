@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <title>Poem Line</title>
+  <link rel="stylesheet" href="style.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.4/p5.min.js"></script>
+</head>
+<body>
+
+  <!-- Start screen: iOS requires a tap before motion permission can be requested -->
+  <div id="start">
+    <h1 id="startTitle">Line 1 / 3</h1>
+    <p>Tilt your phone left and right to browse lines.</p>
+    <button id="enableBtn" class="btn">Enable Motion Controls</button>
+    <button id="buttonsOnlyBtn" class="btn secondary">Use buttons instead</button>
+    <p id="startMsg" class="msg"></p>
+  </div>
+
+  <!-- Small status/error banner shown over the poem screen -->
+  <div id="banner" hidden></div>
+
+  <!-- Main interface (p5 canvas is inserted behind these elements) -->
+  <div id="ui" hidden>
+    <div id="manualNav" hidden>
+      <button id="prevBtn" class="btn secondary">Previous</button>
+      <button id="nextBtn" class="btn secondary">Next</button>
+    </div>
+    <button id="actionBtn" class="btn">Select</button>
+  </div>
+
+  <script src="sketch.js"></script>
+</body>
+</html>
