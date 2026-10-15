@@ -35,21 +35,32 @@ const line3Options = [
 
 const OPTIONS_BY_ROLE = { 1: line1Options, 2: line2Options, 3: line3Options };
 
-/* ---------- 2. TILT SETTINGS ---------- */
-// Tilt axis: gamma (left/right roll, -90..90 degrees in portrait).
-const NEUTRAL_ZONE = 10;   // |gamma| below this = phone is "level"; re-arms navigation
-const TILT_THRESHOLD = 25; // |gamma| above this = trigger next/previous
-const COOLDOWN_MS = 500;   // minimum time between two line changes
+/* ---------- 2. TILT SETTINGS (CHANGED: adjust these to fine-tune) ---------- */
+// Landscape tilt: left of neutral = State A, neutral = State B, right = State C.
+const LEFT_THRESHOLD  = 20;  // degrees of LEFT tilt needed to enter State A
+const RIGHT_THRESHOLD = 20;  // degrees of RIGHT tilt needed to enter State C
+const HYSTERESIS      = 5;   // degrees: must come back this far inside the threshold
+                             //   before A or C is released (e.g. enter A at -20, leave at -15)
+const TILT_SMOOTHING  = 0.3; // 0..1. Lower = smoother but slower; 1 = no smoothing
+const MIN_DWELL_MS    = 200; // minimum time between two state changes
+const TILT_OFFSET     = 0;   // degrees. If "neutral" reads e.g. +8 in the debug box, set 8
+const SWAP_TILT_DIRECTION = false; // set true if left/right feel reversed
+const SHOW_DEBUG      = true; // set false to hide the debug box
 
 /* ---------- 3. STATE ---------- */
 let role = 1;
 let options = line1Options;
-let index = 0;          // currently displayed line (kept when locking / unlocking)
-let locked = false;     // State A (false) / State B (true)
-let armed = true;       // tilt must return to neutral before the next change
-let lastChange = 0;     // timestamp of last line change
+let index = 0;          // (unused for now) poetry line index, kept for later
+let locked = false;     // false = unlocked (tilt works), true = locked (tilt ignored)
+let armed = true;       // (unused for now) old poetry-navigation logic
+let lastChange = 0;     // timestamp of last state change
 let gotOrientationEvent = false;
 let motionActive = false;
+
+// CHANGED: three-state tilt interaction
+let tiltState = "B";    // "A" (left), "B" (neutral), "C" (right)
+let currentTilt = 0;    // smoothed tilt in degrees (negative = left, positive = right)
+let lastBeta = 0, lastGamma = 0; // raw sensor values, for the debug box
 
 /* ---------- 4. SETUP / DRAW (p5) ---------- */
 function setup() {
@@ -77,7 +88,7 @@ function setup() {
   document.getElementById("prevBtn").addEventListener("click", () => step(-1, true));
   document.getElementById("nextBtn").addEventListener("click", () => step(1, true));
 
-  noLoop();   // only redraw when something changes
+  frameRate(30);   // CHANGED: keep drawing so the debug tilt value updates live
 }
 
 function windowResized() {
@@ -103,13 +114,38 @@ function draw() {
   text("Line " + role + " / 3", width / 2, 24 + 10);
   textSize(13);
   fill("#888");
-  text((index + 1) + " of " + options.length + (locked ? "  \u2022  selected" : ""), width / 2, 24 + 34);
+  text(locked ? "selected" : "tilt to change", width / 2, 24 + 34);
 
-  // Poem line, centred in the area between the header and the buttons
+  // CHANGED: show the current tilt state (A / B / C) instead of a poem line.
+  // The old poem drawing is disabled: drawWrappedLine(options[index], ...)
   const landscape = width > height;
   const top = landscape ? 80 : 90;
   const bottom = height - (landscape ? 100 : 190);
-  drawWrappedLine(options[index], width / 2, top, width * 0.84, bottom - top);
+  fill("#1a1a1a");
+  textAlign(CENTER, CENTER);
+  textSize(min((bottom - top) * 0.9, width * 0.3));
+  text(tiltState, width / 2, (top + bottom) / 2);
+
+  if (SHOW_DEBUG) drawDebug();
+}
+
+/* TEMPORARY debug box (top-left). Turn off with SHOW_DEBUG = false. */
+function drawDebug() {
+  textFont("monospace");
+  textSize(13);
+  textAlign(LEFT, TOP);
+  noStroke();
+  fill("#b3261e");
+  text(
+    "tilt:   " + nf(currentTilt, 1, 1) + " deg\n" +
+    "state:  " + tiltState + "\n" +
+    "lock:   " + (locked ? "LOCKED" : "unlocked") + "\n" +
+    "screen: " + getScreenAngle() + " deg\n" +
+    "beta:   " + nf(lastBeta, 1, 1) + "\n" +
+    "gamma:  " + nf(lastGamma, 1, 1),
+    12, 12
+  );
+  textFont("Georgia");
 }
 
 /* Draws text centred in a box, shrinking the font until it fits. */
@@ -153,12 +189,14 @@ function wrapText(str, maxW) {
 
 /* ---------- 5. LINE NAVIGATION + LOCKING ---------- */
 
-/* Move to the next (+1) or previous (-1) line, wrapping around. */
+/* CHANGED: manual fallback buttons now move between states A <-> B <-> C.
+   (The old poetry-line stepping with wrap-around is disabled for now.) */
 function step(dir, fromButton) {
   if (locked) return;
-  index = (index + dir + options.length) % options.length;
+  const order = ["A", "B", "C"];
+  const i = constrain(order.indexOf(tiltState) + dir, 0, 2);
+  tiltState = order[i];
   lastChange = millis();
-  if (!fromButton) armed = false; // tilt must return to neutral before next change
   redraw();
 }
 
@@ -194,32 +232,67 @@ async function goFullscreen() {
    Portrait uses gamma; landscape uses beta. If tilt directions feel reversed
    in landscape, swap the two minus signs below. */
 function getTilt(e) {
-  let angle = 0;
-  if (screen.orientation && typeof screen.orientation.angle === "number") {
-    angle = screen.orientation.angle;
-  } else if (typeof window.orientation === "number") {
-    angle = (360 - window.orientation) % 360;
-  }
+  const angle = getScreenAngle();
   if (angle === 90) return e.beta;
   if (angle === 270) return -e.beta;
   return e.gamma; // portrait (0 or 180)
 }
 
+/* Current screen rotation in degrees: 0 / 90 / 180 / 270. */
+function getScreenAngle() {
+  if (screen.orientation && typeof screen.orientation.angle === "number") {
+    return screen.orientation.angle;
+  }
+  if (typeof window.orientation === "number") {
+    return (360 - window.orientation) % 360;
+  }
+  return 0;
+}
+
 /* Called for every deviceorientation event (~60 times per second). */
 function handleOrientation(e) {
-  if (e.gamma === null || e.gamma === undefined) return;
+  if ((e.gamma === null || e.gamma === undefined) &&
+      (e.beta === null || e.beta === undefined)) return;
   gotOrientationEvent = true;
+  lastBeta = e.beta || 0;
+  lastGamma = e.gamma || 0;
 
-  if (locked) return; // State B: ignore tilt completely
+  // Tilt in degrees for the current screen rotation (negative = left, positive = right)
+  let raw = getTilt(e);
+  if (raw === null || raw === undefined) return;
+  if (SWAP_TILT_DIRECTION) raw = -raw;
+  raw -= TILT_OFFSET;
 
-  const g = getTilt(e);                    // left/right tilt in degrees
-  if (g === null || g === undefined) return;
-  if (abs(g) < NEUTRAL_ZONE) { armed = true; return; } // back in neutral -> re-arm
-  if (!armed) return;                      // still waiting for neutral
-  if (millis() - lastChange < COOLDOWN_MS) return;     // cooldown
+  // Low-pass filter to remove hand jitter. The angle keeps updating while locked
+  // (so the debug box stays live), but the state is frozen.
+  currentTilt += TILT_SMOOTHING * (raw - currentTilt);
 
-  if (g >= TILT_THRESHOLD) step(1, false);        // tilt right -> next
-  else if (g <= -TILT_THRESHOLD) step(-1, false); // tilt left  -> previous
+  if (locked) return;            // locked: tilt no longer changes the state
+  updateTiltState(currentTilt);
+}
+
+/* CHANGED: three-state logic with hysteresis.
+   Enter A/C at the threshold; only leave them once the tilt has come back
+   HYSTERESIS degrees inside it. The area in between is the neutral dead zone. */
+function updateTiltState(t) {
+  const leaveLeft  = LEFT_THRESHOLD  - HYSTERESIS;
+  const leaveRight = RIGHT_THRESHOLD - HYSTERESIS;
+
+  if (tiltState === "B") {
+    if (t <= -LEFT_THRESHOLD) setTiltState("A");
+    else if (t >= RIGHT_THRESHOLD) setTiltState("C");
+  } else if (tiltState === "A") {
+    if (t > -leaveLeft) setTiltState("B");
+  } else if (tiltState === "C") {
+    if (t < leaveRight) setTiltState("B");
+  }
+}
+
+/* Changes state, but not more often than MIN_DWELL_MS. */
+function setTiltState(s) {
+  if (millis() - lastChange < MIN_DWELL_MS) return;
+  tiltState = s;
+  lastChange = millis();
 }
 
 /* Runs on the "Enable Motion Controls" tap (required by iOS 13+). */
