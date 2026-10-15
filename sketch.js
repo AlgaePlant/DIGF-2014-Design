@@ -7,30 +7,21 @@
 // Each array holds the alternatives for one position in the poem.
 // Add or remove lines freely; keep at least 2 per array.
 const line1Options = [
-  "The morning arrives quietly",
-  "Somewhere a window opens",
-  "Before the city wakes",
-  "We carry small lights",
-  "The river keeps its secrets",
-  "Under a borrowed sky",
+   "A",
+   "B",
+   "C"
 ];
 
 const line2Options = [
-  "and everything we lost comes back as light",
-  "while the old streets learn our names",
-  "holding what the wind forgot",
-  "the way a stranger's kindness lingers",
-  "soft as footsteps in the snow",
-  "and the silence says enough",
+   "A",
+   "B",
+   "C"
 ];
 
 const line3Options = [
-  "and we begin again",
-  "until the night remembers us",
-  "this is how we stay",
-  "and nothing is ever finished",
-  "somehow we are home",
-  "and the distance becomes a song",
+   "A",
+   "B",
+   "C"
 ];
 
 const OPTIONS_BY_ROLE = { 1: line1Options, 2: line2Options, 3: line3Options };
