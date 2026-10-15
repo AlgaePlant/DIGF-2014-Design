@@ -7,21 +7,21 @@
 // Each array holds the alternatives for one position in the poem.
 // Add or remove lines freely; keep at least 2 per array.
 const line1Options = [
-   "A",
-   "B",
-   "C"
+  "A",
+  "B",
+  "C",
 ];
 
 const line2Options = [
-   "A",
-   "B",
-   "C"
+  "A",
+  "B",
+  "C",
 ];
 
 const line3Options = [
-   "A",
-   "B",
-   "C"
+  "A",
+  "B",
+  "C",
 ];
 
 const OPTIONS_BY_ROLE = { 1: line1Options, 2: line2Options, 3: line3Options };
