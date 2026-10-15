@@ -92,7 +92,7 @@ function draw() {
   background(locked ? "#e8f0e6" : "#ffffff");
   if (locked) {
     noFill();
-    stroke("#1a1a1a");
+    stroke("#1a");
     strokeWeight(6);
     rect(3, 3, width - 6, height - 6);
   }
@@ -112,10 +112,15 @@ function draw() {
   const landscape = width > height;
   const top = landscape ? 80 : 90;
   const bottom = height - (landscape ? 100 : 190);
-  fill("#1a1a1a");
-  textAlign(CENTER, CENTER);
-  textSize(min((bottom - top) * 0.9, width * 0.3));
-  text(tiltState, width / 2, (top + bottom) / 2);
+ const stateIndex = { A: 0, B: 1, C: 2 }[tiltState];
+
+drawWrappedLine(
+  options[stateIndex],
+  width / 2,
+  top,
+  width - 48,
+  bottom - top
+);
 
   if (SHOW_DEBUG) drawDebug();
 }
